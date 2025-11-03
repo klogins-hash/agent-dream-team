@@ -1,8 +1,9 @@
-"""Human Director Interface - ADHD-INFJ optimized control and visibility system."""
+"""Human Director Interface - Personalized neurotype-optimized control and visibility system."""
 
 import asyncio
 import uuid
 import json
+import os
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -15,6 +16,7 @@ from agent_workflow import get_workflow_engine
 from agent_testing import get_testing_engine
 from agent_cicd import get_cicd_system
 from rag import get_rag_engine
+from neurotype_profiles import get_neurotype_manager, NeurotypeProfile
 
 
 class ControlLevel(Enum):
@@ -519,9 +521,16 @@ class PreferenceLearner:
 # Singleton instance
 _human_director = None
 
-def get_human_director() -> HumanDirector:
-    """Get human director instance."""
+def get_human_director(neurotype_profile: NeurotypeProfile = None) -> HumanDirector:
+    """Get human director instance with neurotype profile."""
     global _human_director
     if _human_director is None:
-        _human_director = HumanDirector()
+        _human_director = HumanDirector(neurotype_profile)
     return _human_director
+
+
+def load_human_director_from_env() -> HumanDirector:
+    """Load human director with neurotype profile from environment variables."""
+    neurotype_manager = get_neurotype_manager()
+    profile = neurotype_manager.load_profile_from_env()
+    return HumanDirector(profile)
