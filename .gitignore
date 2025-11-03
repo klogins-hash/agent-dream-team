@@ -1,5 +1,6 @@
 # Environment
 .env
+.env.production
 *.pyc
 __pycache__/
 .venv/
@@ -9,6 +10,17 @@ env/
 # Sessions
 agent_sessions/
 *.db
+team_memory.json
+
+# Backups
+backups/
+restore_temp/
+
+# SSL Certificates
+ssl/
+*.pem
+*.key
+*.crt
 
 # IDE
 .vscode/
@@ -19,3 +31,10 @@ agent_sessions/
 # OS
 .DS_Store
 Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
