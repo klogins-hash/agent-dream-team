@@ -1,0 +1,21 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+env/
+
+# Sessions
+agent_sessions/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
