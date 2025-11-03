@@ -2,10 +2,23 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - 'alert_rules.yml'
+
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+
+  - job_name: 'agent_api'
+    static_configs:
+      - targets: ['agent-app:8000']
+    metrics_path: '/metrics'
 
   - job_name: 'postgres'
     static_configs:
@@ -22,3 +35,7 @@ scrape_configs:
   - job_name: 'elasticsearch'
     static_configs:
       - targets: ['elasticsearch:9200']
+
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
