@@ -1,8 +1,7 @@
 """FastAPI REST API for Agent Dream Team."""
 
-from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
@@ -14,6 +13,8 @@ from datetime import datetime
 from team_enhanced import create_enhanced_team
 from database import get_postgres, get_redis
 from neo4j_graph import get_knowledge_graph
+from auth import verify_api_key, create_api_key, list_user_api_keys, revoke_api_key
+from rate_limiter import default_rate_limiter, strict_rate_limiter
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -32,9 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Security
-security = HTTPBearer()
 
 
 # Pydantic Models
@@ -98,14 +96,16 @@ class HealthResponse(BaseModel):
 tasks: Dict[str, Dict[str, Any]] = {}
 
 
-# Dependency: Verify API key
-async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Verify API key from Authorization header."""
-    # TODO: Implement proper API key verification
-    # For now, accept any bearer token
-    if not credentials.credentials:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    return credentials.credentials
+# Dependencies
+async def get_current_user(user_id: str = Depends(verify_api_key)) -> str:
+    """Get current authenticated user."""
+    return user_id
+
+
+async def check_rate_limit(request: Request, user_id: str = Depends(get_current_user)):
+    """Check rate limit for current user."""
+    await default_rate_limiter.check_rate_limit(request, user_id)
+    return user_id
 
 
 # Health check
@@ -147,19 +147,20 @@ async def health_check():
 # Chat endpoint
 @app.post("/api/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(
-    request: ChatRequest,
-    api_key: str = Depends(verify_api_key)
+    chat_request: ChatRequest,
+    req: Request,
+    user_id: str = Depends(check_rate_limit)
 ):
     """Send a message to the agent team and get a response."""
     try:
         # Generate session ID if not provided
-        session_id = request.session_id or str(uuid.uuid4())
+        session_id = chat_request.session_id or str(uuid.uuid4())
         
         # Create agent team
         team, memory = create_enhanced_team()
         
         # Execute task
-        result = team(request.message)
+        result = team(chat_request.message)
         
         # Extract response
         response_text = ""
@@ -181,7 +182,7 @@ async def chat(
         db = get_postgres()
         db.save_conversation(
             session_id=session_id,
-            user_message=request.message,
+            user_message=chat_request.message,
             agent_response=response_text,
             metadata={
                 "execution_time_ms": result.execution_time,
